@@ -1,0 +1,9 @@
+segment data
+    var hello "Hello World!"
+
+segment text
+    mov r0, .start
+    jmp r0
+.start
+    mov r0, hello
+    syscall @writeLine

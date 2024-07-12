@@ -1,0 +1,13 @@
+segment data
+	var sex1 0
+	var sex2 100
+	var h "Ya Gey"
+segment text
+	mov r0, sex1
+	mov r1, sex2
+	mul r0, r1
+	mov r7, .sperma
+	jnz r7
+.sperma
+	mov r0, h
+	syscall @writeLine
