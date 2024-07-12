@@ -23,7 +23,7 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
         {
             throw ParserExeption("Function not implemented", it->line.line);
         }
-        if (isVariableDec(it->line)) // Если узел - объявление переменной
+        else if (isVariableDec(it->line)) // Если узел - объявление переменной
         {
             // Проверяем, что узел не имеет дочерних узлов
             if (it->children.size() != 0) throw ParserExeption("Tabulation error", it->line.line);
@@ -31,14 +31,14 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
             result.push_back(v);
             continue;
         }
-        if (isAssignment(it->line)) // Если узел - присваивание
+        else if (isAssignment(it->line)) // Если узел - присваивание
         {
             if (it->children.size() != 0) throw ParserExeption("Tabulation error", it->line.line);
             auto a = parseAssignment(it->line);
             result.push_back(a);
             continue;
         }
-        if (isForLoop(it->line)) // Если узел - цикл For
+        else if (isForLoop(it->line)) // Если узел - цикл For
         {
             std::vector<VariableDec*> orignalVariables2 = variables;
 
@@ -100,19 +100,20 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
 
             continue;
         }
-        if (isWhileLoop(it->line)) // Если узел - цикл While
+        else if (isWhileLoop(it->line)) // Если узел - цикл While
         {
             if (it->children.size() == 0) throw ParserExeption("Tabulation error", it->line.line);
             While* w = new While();
             w->line = it->line.line;
             Expression* e = parseExpression({std::vector<Token>(it->line.t.begin() + 1, it->line.t.end()), it->line.line, it->line.spaceCount},  0);
             e->line = it->line.line;
+            if (e->type != Expression::Type::Bool) throw ParserExeption("While loop condition must be bool", it->line.line);
             w->addChild(e);
             w->addChildren(parse(it->children));
             result.push_back(w);
             continue;
         }
-        if (it->line.t[0].value == "do") // Если узел - цикл Do While
+        else if (it->line.t[0].value == "do") // Если узел - цикл Do While
         {
             if (it->children.size() == 0) throw ParserExeption("Tabulation error", it->line.line);
             if ((it + 1)->children.size() != 0) throw ParserExeption("Tabulation error", (it + 1)->line.line);
@@ -127,9 +128,10 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
             result.push_back(d);
             continue;
         }
-        if (isIf(it->line)) // Если узел - условный оператор
+        else if (isIf(it->line)) // Если узел - условный оператор
         {
             if (it->children.size() == 0) throw ParserExeption("Tabulation error", it->line.line);
+
             If* i = new If();
             i->line = it->line.line;
             Expression* e = parseExpression({std::vector<Token>(it->line.t.begin() + 1, it->line.t.end()), it->line.line, it->line.spaceCount},  0);
@@ -138,37 +140,36 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
             Node* n = new Node();
             n->line = it->line.line;
             n->addChildren(parse(it->children));
-            i->addChild(n);
             it++;
-            for (; it != nodes.end(); it++)
-            {
-                if (it->line.t[0].value == "else")
-                {
-                    if (it->children.size() == 0) throw ParserExeption("Tabulation error", it->line.line);
-                    if (it->children.size() == 2 and it->line.t[1].value == "if")
-                    {
-                        If* i2 = new If();
-                        i2->line = it->line.line;
-                        Expression* e2 = parseExpression({std::vector<Token>(it->line.t.begin() + 2, it->line.t.end()), it->line.line, it->line.spaceCount},  0);
-                        e2->line = it->line.line;
-                        i2->addChild(e2);
-                        i2->addChildren(parse(it->children));
-                        i->addChild(i2);
-                    }
-                    else
-                    {
-                        Node* n2 = new Node();
-                        n2->line = it->line.line;
-                        n2->addChildren(parse(it->children));
-                        i->addChild(n2);
-                    }
-                }
-                else break;
-            }
             result.push_back(i);
-            continue;
+            while (it != nodes.end() and it->line.t.size() > 1 and it->line.t[0].value == "else" and it->line.t[1].value == "if")
+            {
+                if (it->children.size() == 0) throw ParserExeption("Tabulation error", it->line.line);
+                ElseIf* ei = new ElseIf();
+                ei->line = it->line.line;
+                Expression* e = parseExpression({std::vector<Token>(it->line.t.begin() + 2, it->line.t.end()), it->line.line, it->line.spaceCount},  0);
+                e->line = it->line.line;
+                ei->addChild(e);
+                ei->addChildren(parse(it->children));
+                i->addChild(ei);
+                it++;
+            }
+            if (it == nodes.end())
+            {
+                it--;
+                continue;
+            }
+            if (it->line.t.size() == 1 and it->line.t[0].value == "else")
+            {
+                if (it->children.size() == 0) throw ParserExeption("Tabulation error", it->line.line);
+                Else* ei = new Else();
+                ei->line = it->line.line;
+                ei->addChildren(parse(it->children));
+                i->addChild(ei);
+                continue;
+            }
         }
-            
+        else throw ParserExeption("Not implemented", nodes[0].line.line);
     }
     variables = orignalVariables;
     

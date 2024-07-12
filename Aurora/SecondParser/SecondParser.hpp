@@ -17,6 +17,8 @@
 #include "Cycles/For.hpp"
 #include "Cycles/DoWhile.hpp"
 #include "If.hpp"
+#include "Else.hpp"
+#include "ElseIf.hpp"
 
 class SecondParser
 {

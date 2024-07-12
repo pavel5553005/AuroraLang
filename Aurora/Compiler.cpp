@@ -77,6 +77,14 @@ std::vector<std::string> printNode(Node* node)
     {
         result.push_back("If");
     }
+    else if (dynamic_cast<ElseIf*>(node) != nullptr)
+    {
+        result.push_back("Else If");
+    }
+    else if (dynamic_cast<Else*>(node) != nullptr)
+    {
+        result.push_back("Else");
+    }
     else if (dynamic_cast<Assignment*>(node) != nullptr)
     {
         result.push_back("Assignment to " + getBlue((dynamic_cast<Assignment*>(node))->variable->name));
