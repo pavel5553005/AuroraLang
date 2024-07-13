@@ -154,7 +154,7 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
                 i->addChild(ei);
                 it++;
             }
-            if (it == nodes.end())
+            if (it  == nodes.end())
             {
                 it--;
                 continue;
@@ -168,8 +168,13 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
                 i->addChild(ei);
                 continue;
             }
+            else
+            {
+                it--;
+                continue;
+            }
         }
-        else throw ParserExeption("Not implemented", nodes[0].line.line);
+        else throw ParserExeption("Invalid operation", it->line.line);
     }
     variables = orignalVariables;
     
@@ -259,11 +264,11 @@ Expression* SecondParser::parseExpression(Lexer::LineWithTokens line, int level)
             }
         }
     }
-    if (line.t[0].type == Token::Type::Type and getTypeFromToken(line.t[0]) != Expression::Type::Void)
+    if (line.t[0].type == Token::Type::Type and Expression::getTypeFromToken(line.t[0]) != Expression::Type::Void)
     {
         // Если тип объявлен, то добавляем конвертацию
         auto e = parseExpression({std::vector<Token>(line.t.begin() + 1, line.t.end()), line.line, line.spaceCount}, 0);
-        Convertion* c = new Convertion(getTypeFromToken(line.t[0]), e->type, true); // Конвертируем тип выражения в объявленный тип
+        Convertion* c = new Convertion(Expression::getTypeFromToken(line.t[0]), e->type, true); // Конвертируем тип выражения в объявленный тип
         c->line = line.line;
         c->addChild(e);
         return c;
@@ -286,7 +291,7 @@ Expression* SecondParser::parseExpression(Lexer::LineWithTokens line, int level)
     }
     // Если литеральное значение, то добавляем его
     LiteralConst* l = new LiteralConst(line.t[0].value);
-    l->type = getTypeFromString(line.t[0].value);
+    l->type = Expression::getTypeFromString(line.t[0].value);
     l->line = line.line;
     return l;
 }
@@ -316,7 +321,7 @@ VariableDec* SecondParser::parseVariableDec(Lexer::LineWithTokens& line)
     if (isDeclaration) throw ParserExeption("Variable " + getBlue(line.t[1].value) + " is already declared", line.line);
 
     // Создаем объявление переменной
-    VariableDec* v = new VariableDec(getTypeFromToken(line.t[0]), line.t[1].value);
+    VariableDec* v = new VariableDec(Expression::getTypeFromToken(line.t[0]), line.t[1].value);
     v->line = line.line;
     if (line.t[2].type == Token::Type::Operator and line.t[2].value == "=") // Если есть присваивание
     {

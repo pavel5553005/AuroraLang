@@ -2,12 +2,12 @@
     "tasks": [
         {
             "type": "cppbuild",
-            "label": "C/C++: clang++ сборка активного файла",
-            "command": "/usr/bin/clang++",
+            "label": "C/C++: g++ сборка активного файла",
+            "command": "/usr/bin/g++",
             "args": [
-                "-fcolor-diagnostics",
-                "-fansi-escape-codes",
+                "-fdiagnostics-color=always",
                 "-g",
+                "-std=c++17",
                 "${file}",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"

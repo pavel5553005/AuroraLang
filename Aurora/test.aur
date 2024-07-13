@@ -1,15 +1,2 @@
-if true
-    int i = 0
-else if true
-    int i = 0
-else if true
-    int i = 0
-else if true
-    int i = 0
-else if true
-    int i = 0
-else if true
-    while true
-        int i = 0 + 0 + 0
-else
+void myFunc()
     int i = 0

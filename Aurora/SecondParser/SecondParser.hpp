@@ -19,6 +19,8 @@
 #include "If.hpp"
 #include "Else.hpp"
 #include "ElseIf.hpp"
+#include "FunctionDec.hpp"
+#include "FunctionCall.hpp"
 
 class SecondParser
 {
@@ -26,10 +28,7 @@ private:
     FirstParser::Node& nodes;
     Expression* root;
     std::vector<VariableDec*> variables;
-
-
-    Expression::Type getTypeFromToken(Token t);
-    Expression::Type getTypeFromString(std::string s);
+    std::vector<FunctionDec*> functions;
 
     Expression* parseExpression(Lexer::LineWithTokens line, int level);
     
@@ -48,6 +47,7 @@ private:
 
     VariableDec* findIdentifier(std::string name);
 public:
+    void findFunctionDecs();
     std::vector<Node*> parse(std::vector<FirstParser::Node>& nodes);
     SecondParser(FirstParser::Node& nodes);
     ~SecondParser();
@@ -59,6 +59,17 @@ SecondParser::SecondParser(FirstParser::Node& nodes) : nodes(nodes)
 }
 SecondParser::~SecondParser()
 {
+}
+
+void SecondParser::findFunctionDecs()
+{
+    for (int i = 0; i < nodes.children.size(); i++)
+    {
+        if (isFunctionDec(nodes.children[i].line))
+        {
+            functions.push_back(new FunctionDec(nodes.children[i].line));
+        }
+    }
 }
 
 bool SecondParser::isOperatorInList(std::string op, int level)
@@ -136,84 +147,4 @@ VariableDec* SecondParser::findIdentifier(std::string name)
         if ((*it)->name == name) return *it;
     }
     throw std::runtime_error("Variable " + getBlue(name) + " not declared");
-}
-
-Expression::Type SecondParser::getTypeFromToken(Token t)
-{
-    if (t.type == Token::Type::Type)
-    {
-        if (t.value == "bool")
-        {
-            return Expression::Type::Bool;
-        }
-        else if (t.value == "char")
-        {
-            return Expression::Type::Char;
-        }
-        else if (t.value == "short")
-        {
-            return Expression::Type::Short;
-        }
-        else if (t.value == "int")
-        {
-            return Expression::Type::Int;
-        }
-        else if (t.value == "long")
-        {
-            return Expression::Type::Long;
-        }
-        else if (t.value == "float")
-        {
-            return Expression::Type::Float;
-        }
-        else if (t.value == "double")
-        {
-            return Expression::Type::Double;
-        }
-    }
-    return Expression::Type::Void;
-}
-
-Expression::Type SecondParser::getTypeFromString(std::string s)
-{
-    auto isInteger = [](const std::string& s) -> bool {
-        for (char c : s) {
-            if (!std::isdigit(c) && c != '+' && c != '-') {
-                return false;
-            }
-        }
-        return true;
-    };
-
-    // Проверяем, является ли строка double
-    auto isDouble = [](const std::string& s) -> bool {
-        bool pointSeen = false;
-        for (char c : s) {
-            if (!std::isdigit(c) && c != 'e' && c != 'E' && c != '+' && c != '-' && c != '.') {
-                return false;
-            }
-            if (c == '.') {
-                if (pointSeen) return false;
-                pointSeen = true;
-            }
-        }
-        return pointSeen;
-    };
-
-    // Проверяем, является ли строка float
-    auto isFloat = [isDouble](const std::string& s) -> bool {
-        if (s.back() != 'f' && s.back() != 'F') return false;
-        return isDouble(s.substr(0, s.size() - 1));
-    };
-
-    // Проверяем, является ли строка bool
-    auto isBool = [](const std::string& s) -> bool {
-        return s == "true" || s == "false";
-    };
-
-    if (isBool(s)) return Expression::Type::Bool;
-    if (isInteger(s)) return Expression::Type::Int;
-    if (isDouble(s)) return Expression::Type::Double;
-    if (isFloat(s)) return Expression::Type::Float;
-    throw ParserExeption("Unknown type", -1);
 }

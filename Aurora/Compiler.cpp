@@ -166,7 +166,8 @@ int main()
     {
         std::vector<FirstParser::Node> nodes;
         for (auto i : fp.getRoot().children) nodes.push_back(i);
-        result = sp.parse(nodes);
+        sp.findFunctionDecs();
+        // result = sp.parse(nodes);
     }
     catch(const ParserExeption& e)
     {
