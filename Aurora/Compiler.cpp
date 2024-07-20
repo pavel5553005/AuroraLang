@@ -85,9 +85,28 @@ std::vector<std::string> printNode(Node* node)
     {
         result.push_back("Else");
     }
+    else if (dynamic_cast<FunctionCall*>(node) != nullptr)
+    {
+        result.push_back("FunctionCall " + getBlue((dynamic_cast<FunctionCall*>(node))->name));
+    }
+    else if (dynamic_cast<FunctionDec*>(node) != nullptr)
+    {
+        std::string str = "FunctionDec " + getBlue((dynamic_cast<FunctionDec*>(node))->name) + "(";
+        for (auto i : (dynamic_cast<FunctionDec*>(node))->args)
+        {
+            str += getBlue(typeToString(i->type)) + " " + getBlue(i->name) + ", ";
+        }
+        str += ")";
+        result.push_back(str);
+
+    }
     else if (dynamic_cast<Assignment*>(node) != nullptr)
     {
         result.push_back("Assignment to " + getBlue((dynamic_cast<Assignment*>(node))->variable->name));
+    }
+    else if (dynamic_cast<Return*>(node) != nullptr)
+    {
+        result.push_back("Return");
     }
     else
     {
@@ -158,16 +177,14 @@ int main()
 
     SecondParser sp(fp.getRoot());
 
-    std::vector<Node*> result;
+    Node* result;
 
     std::cout << "Parsing two..." << std::endl;
     
     try
     {
-        std::vector<FirstParser::Node> nodes;
-        for (auto i : fp.getRoot().children) nodes.push_back(i);
-        sp.findFunctionDecs();
-        // result = sp.parse(nodes);
+        sp.parseCode();
+        result = &sp.getRoot();
     }
     catch(const ParserExeption& e)
     {
@@ -175,15 +192,21 @@ int main()
         return 1;
     }
 
-    std::cout << "AST:\n" << std::endl;
+    std::cout << "AST:\n\nFunctions:\n\n";
 
-    for (auto i : result)
+    for (auto i : sp.getFunctions())
     {
-        std::vector<std::string> tmp = printNode(i);
-        for (auto &&j : tmp)
+        for (auto j : printNode(i))
         {
             std::cout << j << std::endl;
         }
+    }
+
+    std::cout << "\nCode:\n\n";
+
+    for (auto i : printNode(result))
+    {
+        std::cout << i << std::endl;
     }
 
     return 0;

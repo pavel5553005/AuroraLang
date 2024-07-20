@@ -1,2 +1,4 @@
-void myFunc()
-    int i = 0
+void myF(int i)
+    return 1
+
+myF(10)

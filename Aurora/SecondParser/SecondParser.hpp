@@ -21,35 +21,46 @@
 #include "ElseIf.hpp"
 #include "FunctionDec.hpp"
 #include "FunctionCall.hpp"
+#include "Return.hpp"
 
 class SecondParser
 {
 private:
     FirstParser::Node& nodes;
-    Expression* root;
+    Node root;
     std::vector<VariableDec*> variables;
     std::vector<FunctionDec*> functions;
+    bool isParsingFunction = false;
 
     Expression* parseExpression(Lexer::LineWithTokens line, int level);
     
     VariableDec* parseVariableDec(Lexer::LineWithTokens& line);
     Assignment* parseAssignment(Lexer::LineWithTokens& line);
     Node* parseOperation(Lexer::LineWithTokens& line);
+    FunctionCall* parseFunctionCall(Lexer::LineWithTokens& line);
 
     bool isOperatorInList(std::string op, int level);
 
     bool isFunctionDec(Lexer::LineWithTokens& line);
+    bool isFunctionCall(Lexer::LineWithTokens& line);
     bool isVariableDec(Lexer::LineWithTokens& line);
     bool isAssignment(Lexer::LineWithTokens& line);
     bool isForLoop(Lexer::LineWithTokens& line);
     bool isWhileLoop(Lexer::LineWithTokens& line);
     bool isIf(Lexer::LineWithTokens& line);
+    bool isReturn(Lexer::LineWithTokens& line);
 
     VariableDec* findIdentifier(std::string name);
-public:
+    FunctionDec* findFunction(std::string name, std::vector<Expression*> args);
+    
     void findFunctionDecs();
     std::vector<Node*> parse(std::vector<FirstParser::Node>& nodes);
+    FunctionCall* parseFunctionCall(FirstParser::Node& node);
+public:
     SecondParser(FirstParser::Node& nodes);
+    void parseCode();
+    Node& getRoot() {return root;}
+    std::vector<FunctionDec*> getFunctions() {return functions;}
     ~SecondParser();
 };
 
@@ -57,17 +68,30 @@ SecondParser::SecondParser(FirstParser::Node& nodes) : nodes(nodes)
 {
     
 }
+
+void SecondParser::parseCode()
+{
+    std::cout << "Finding functions..." << std::endl;
+    isParsingFunction = true;
+    findFunctionDecs();
+    std::cout << "Parsing code..." << std::endl;
+    isParsingFunction = false;
+    root.addChildren(parse(nodes.children));
+}
 SecondParser::~SecondParser()
 {
 }
 
 void SecondParser::findFunctionDecs()
 {
-    for (int i = 0; i < nodes.children.size(); i++)
+    for (auto i : nodes.children)
     {
-        if (isFunctionDec(nodes.children[i].line))
+        if (isFunctionDec(i.line))
         {
-            functions.push_back(new FunctionDec(nodes.children[i].line));
+
+            FunctionDec* f = new FunctionDec(i.line);
+            functions.push_back(f);
+            f->addChildren(parse(i.children));
         }
     }
 }
@@ -90,6 +114,16 @@ bool SecondParser::isFunctionDec(Lexer::LineWithTokens& line)
             return true;
         }
         throw ParserExeption("Expected ')'", line.line);
+    }
+    return false;
+}
+
+bool SecondParser::isFunctionCall(Lexer::LineWithTokens& line)
+{
+    if (line.t.size() >= 2 and line.t[0].type == Token::Type::Identifier and line.t[1].type == Token::Type::LeftParen)
+    {
+        if ((line.t.end() - 1)->type != Token::Type::RightParen) throw ParserExeption("Expected ')'", line.line);
+        return true;
     }
     return false;
 }
@@ -140,6 +174,12 @@ bool SecondParser::isIf(Lexer::LineWithTokens& line)
     return false;
 }
 
+bool SecondParser::isReturn(Lexer::LineWithTokens& line)
+{
+    if (line.t[0].type == Token::Type::Keyword and line.t[0].value == "return") return true;
+    return false;
+}
+
 VariableDec* SecondParser::findIdentifier(std::string name)
 {
     for (auto it = variables.begin(); it != variables.end(); it++)
@@ -147,4 +187,26 @@ VariableDec* SecondParser::findIdentifier(std::string name)
         if ((*it)->name == name) return *it;
     }
     throw std::runtime_error("Variable " + getBlue(name) + " not declared");
+}
+
+FunctionDec* SecondParser::findFunction(std::string name, std::vector<Expression*> args)
+{
+    for (auto it = functions.begin(); it != functions.end(); it++)
+    {
+        if ((*it)->name == name and (*it)->args.size() == args.size())
+        {
+            if ([&](){
+                for (int i = 0; i < args.size(); i++)
+                {
+                    if ((*it)->args[i]->type < args[i]->type) return false;
+                }
+                return true;
+            }())
+            {
+                return *it;
+            }
+            else continue;
+        }
+    }
+    throw std::runtime_error("Function " + getBlue(name) + " not declared");
 }

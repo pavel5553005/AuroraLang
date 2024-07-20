@@ -21,7 +21,7 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
     {
         if (isFunctionDec(it->line)) // Если узел - объявление функции
         {
-            throw ParserExeption("Function not implemented", it->line.line);
+            continue;
         }
         else if (isVariableDec(it->line)) // Если узел - объявление переменной
         {
@@ -174,12 +174,46 @@ std::vector<Node*> SecondParser::parse(std::vector<FirstParser::Node>& nodes)
                 continue;
             }
         }
+        else if (isFunctionCall(it->line)) // Если узел - вызов функции
+        {
+            FunctionCall* f = parseFunctionCall(it->line);
+            result.push_back(f);
+            continue;
+        }
+        else if (isReturn(it->line)) // Если узел - return
+        {
+            if (!isParsingFunction) throw ParserExeption("Return outside function", it->line.line);
+            Return* r = new Return();
+            r->type = functions.back()->type;
+            r->line = it->line.line;
+            if (functions.back()->type == Expression::Type::Void)
+            {
+                if (it->line.t.size() != 1) throw ParserExeption("Return value in void function", it->line.line);
+                result.push_back(r);
+                continue;
+            }
+            if (it->children.size() == 1) throw ParserExeption("Expected expression", it->line.line);
+            Expression* e = parseExpression({std::vector<Token>(it->line.t.begin() + 1, it->line.t.end()), it->line.line, it->line.spaceCount},  0);
+            e->line = it->line.line;
+            if (e->type > functions.back()->type) throw ParserExeption("Wrong return type", it->line.line);
+            if (e->type < functions.back()->type)
+            {
+                Convertion* c = new Convertion(functions.back()->type, e->type);
+                c->line = it->line.line;
+                c->addChild(e);
+                r->addChild(c);
+                result.push_back(r);
+                continue;
+            }
+            r->type = e->type;
+            r->addChild(e);
+            result.push_back(r);
+            continue;
+        }
         else throw ParserExeption("Invalid operation", it->line.line);
     }
     variables = orignalVariables;
-    
-    if (result.size() == 0)
-        throw ParserExeption("Not implemented", nodes[0].line.line);
+
     return result;
 }
 
@@ -289,6 +323,7 @@ Expression* SecondParser::parseExpression(Lexer::LineWithTokens line, int level)
         v->line = line.line;
         return v;
     }
+    if (isFunctionCall(line)) return parseFunctionCall(line);
     // Если литеральное значение, то добавляем его
     LiteralConst* l = new LiteralConst(line.t[0].value);
     l->type = Expression::getTypeFromString(line.t[0].value);
@@ -372,5 +407,43 @@ Node* SecondParser::parseOperation(Lexer::LineWithTokens& line)
 {
     if (isVariableDec(line)) return parseVariableDec(line);
     if (isAssignment(line)) return parseAssignment(line);
+    if (isFunctionCall(line)) return parseFunctionCall(line);
     return nullptr;
+}
+
+FunctionCall* SecondParser::parseFunctionCall(Lexer::LineWithTokens& line)
+{
+    FunctionCall* f = new FunctionCall();
+    int countOfParent = 0;
+    std::vector<Expression*> args;
+    for (auto it = line.t.begin() + 2; it != line.t.end();it++)
+    {
+        if (it->type == Token::Type::LeftParen) countOfParent++;
+        if (it->type == Token::Type::RightParen) countOfParent--;
+
+        if (countOfParent != 0) continue;
+
+        Lexer::LineWithTokens t;
+        t.line = line.line;
+        t.spaceCount = line.spaceCount;
+        while (it != line.t.end() and (it->type != Token::Type::Comma and it->type != Token::Type::RightParen)) t.t.push_back(*it++);
+        f->children.push_back(parseExpression(t, 0));
+        args.push_back(dynamic_cast<Expression*>(f->children.back()));
+    }
+    FunctionDec* function = findFunction(line.t[0].value, args);
+    for (int i = 0; i < f->children.size(); i++)
+    {
+        if (function->args[i]->type != args[i]->type) 
+        {
+            Convertion* c = new Convertion(function->args[i]->type, args[i]->type);
+            c->line = line.line;
+            c->addChild(args[i]);
+            f->children[i] = c;
+        }
+    }
+    
+    f->type = function->type;
+    f->name = function->name;
+    f->line = line.line;
+    return f;
 }
